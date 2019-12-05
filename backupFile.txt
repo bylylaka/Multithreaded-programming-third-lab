@@ -1,0 +1,52 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+typedef enum {
+    FIBONACCI,
+    POW,
+    BUBBLE_SORT_UINT64,
+    STOP
+} EType;
+
+typedef struct {
+    uint8_t Type;
+    uint64_t Size;
+    uint8_t *Data;
+} TMessage;
+
+TMessage readStruct() {
+    TMessage structure;
+
+    int *size = malloc(1 * sizeof(int));
+
+    read(0, size, sizeof(int));
+    printf("%d\n", *size);
+
+    int *buf  = malloc(10 * sizeof(int));
+    for (int i = 0; i < *size; i++) {
+        read(0, buf, sizeof(int));
+        printf("%d\n", *buf);
+    }
+
+    return structure;
+}
+
+int main() {
+    readStruct();
+
+
+//    int *size = malloc(1 * sizeof(int));
+//
+//    read(0, size, sizeof(int));
+//    printf("%d\n", *size);
+//
+//    int *buf  = malloc(10 * sizeof(int));
+//    for (int i = 0; i < *size; i++) {
+//        read(0, buf, sizeof(int));
+//        printf("%d\n", *buf);
+//    }
+
+    return 0;
+}
+
