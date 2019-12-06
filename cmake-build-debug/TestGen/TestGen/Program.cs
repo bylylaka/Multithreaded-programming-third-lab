@@ -23,30 +23,71 @@ namespace TestGen
 
 		static void Main(string[] args)
 		{
-			var structure = new TMessage()
+			while (true)
 			{
-				type = EType.STOP,
-				size = 5,
-				data = new List<int>() { 11111, 22222, 33333, 55555, 44444 }
-			};
+				var structure = GenerateStructure();
+				WriteStructure(structure);
 
+				if (structure.type == EType.STOP)
+				{
+					return;
+				}
+			}
+		}
+
+		public static void WriteStructure(TMessage structure)
+		{
 			using (var stdout = Console.OpenStandardOutput())
 			{
 				var serializedStruct = SerializeStruct(structure);
-
 				stdout.Write(serializedStruct.ToArray(), 0, serializedStruct.Count);
-
-
-				//byte[] intBytes = BitConverter.GetBytes(intValue);
-				////Array.Reverse(intBytes);
-				//byte[] bytes = intBytes;
-				//stdout.Write(bytes, 0, bytes.Length);
 			}
+		}
+
+		public static TMessage GenerateStructure()
+		{
+			var random = new Random();
+
+			Array values = Enum.GetValues(typeof(EType));
+			var type = random.Next(values.Length);
+
+			var size = 0;
+
+			switch (type)
+			{
+				case (int)EType.FIBONACCI:
+					size = 1;
+					break;
+				case (int)EType.POW:
+					size = 2;
+					break;
+				case (int)EType.BUBBLE_SORT_UINT64:
+					size = random.Next(1, 50); //add tests for minuses and zero
+					break;
+				case (int)EType.STOP:
+					break;
+			}
+
+			var data = new List<int>();
+			for (var elementDataIndex = 0; elementDataIndex < size; elementDataIndex++)
+			{
+				var elementDataValue = random.Next(-100, 100);
+				data.Add(elementDataValue);
+			}
+
+			var structure = new TMessage()
+			{
+				type = (EType)type,
+				size = size,
+				data = data
+			};
+
+			return structure;
 		}
 
 		public static List<byte> SerializeStruct(TMessage structure)
 		{
-			var typeAsBites = BitConverter.GetBytes((int) structure.type).ToList();
+			var typeAsBites = BitConverter.GetBytes((int)structure.type).ToList();
 			var sizeAsBites = BitConverter.GetBytes(structure.size).ToList();
 
 			var dataAsBytes = SerializeArray(structure.data).ToList();
