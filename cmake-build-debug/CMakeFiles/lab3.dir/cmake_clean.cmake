@@ -1,5 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/lab3.dir/main.c.o"
+  "CMakeFiles/lab3.dir/queue.c.o"
   "lab3.exe"
   "lab3.pdb"
   "liblab3.dll.a"

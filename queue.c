@@ -1,4 +1,5 @@
-//
-// Created by Максим on 06.12.2019.
-//
+#include <stdio.h>
 
+void tatarTest(){
+    printf("123123\n");
+}
