@@ -4,6 +4,8 @@
 #include <pthread.h>
 #include "queue.c"
 
+pthread_mutex_t queueMutex = PTHREAD_MUTEX_INITIALIZER;
+
 typedef enum {
     FIBONACCI,
     POW,
@@ -84,10 +86,12 @@ void initQueue(struct queue *q) {
 }
 
 void insertInQueue(struct queue *q, int x) {
+    pthread_mutex_lock(queueMutex);
     if (q->last < QMAX - 1) {
         q->last++;
         q->qu[q->last] = x;
     }
+    pthread_mutex_unlock(queueMutex);
 }
 
 int isemptyQueue(struct queue *q) {
@@ -96,6 +100,7 @@ int isemptyQueue(struct queue *q) {
 }
 
 int removeQueue(struct queue *q) {
+    pthread_mutex_lock(queueMutex);
     int x, h;
     if (isemptyQueue(q) == 1) {
         return (0);
@@ -105,6 +110,7 @@ int removeQueue(struct queue *q) {
         q->qu[h] = q->qu[h + 1];
     }
     q->last--;
+    pthread_mutex_unlock(queueMutex);
     return (x);
 }
 
