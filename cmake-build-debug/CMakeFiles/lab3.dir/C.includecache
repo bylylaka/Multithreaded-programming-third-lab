@@ -15,10 +15,8 @@ unistd.h
 -
 pthread.h
 -
-queue.c
-/cygdrive/d/CLionProjects/lab3/queue.c
-
-/cygdrive/d/CLionProjects/lab3/queue.c
-stdio.h
+math.h
+-
+errno.h
 -
 

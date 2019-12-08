@@ -3,4 +3,4 @@ project(lab3 C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(lab3 main.c queue.c)
+add_executable(lab3 main.c)

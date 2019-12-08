@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "queue.c"
+#include <math.h>
+#include <errno.h>
 
 pthread_mutex_t queueMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t writerMutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef enum {
     FIBONACCI,
@@ -13,7 +15,7 @@ typedef enum {
     STOP
 } EType;
 
-typedef struct {
+typedef struct tMessage {
     EType Type;
     uint64_t Size;
     uint64_t *Data;
@@ -42,33 +44,98 @@ TMessage readStruct() {
     return structure;
 }
 
+void *bubbleSortThread(TMessage *structure) {
+    pthread_mutex_unlock(&writerMutex);
+
+    for (int i = 0; i < structure->Size - 1; i++) {
+        for (int j = 0; j < structure->Size - i - 1; j++) {
+            if (structure->Data[j] > structure->Data[j + 1]) {
+                int tmp = structure->Data[j];
+                structure->Data[j] = structure->Data[j + 1];
+                structure->Data[j + 1] = tmp;
+            }
+        }
+    }
+
+    pthread_mutex_lock(&writerMutex);   // move to writer
+    for (int i = 0; i < structure->Size; i++) {
+        printf("e[%d]: %d\n", i, structure->Data[i]);
+    }
+    pthread_mutex_unlock(&writerMutex);
+    printf("\n\n\n\n\n\n");
+
+    return 0;
+}
+
+void *powThread(void *args) {
+    TMessage *structure = args;
+    float result = powf((float) structure->Data[0], (float) structure->Data[1]);
+    printf("%d   %d   ->   %.0f\n", structure->Data[0], structure->Data[1], result);
+}
+
+int fibonacciCalculator(int n) {
+    if (n == 1 || n == 2)
+        return 1;
+    return fibonacciCalculator(n - 1) + fibonacciCalculator(n - 2);
+}
+
+void *fibonacciThread(int n) {
+    if (n <= 0) {
+        return 0;
+    }
+    int result = fibonacciCalculator(n);
+    printf("fib: %d\n", result);
+}
+
 void *reader(void *args) {
+    pthread_t reader_threads[100];  //TODO: realloc
+    int threadsCount = 0;
+
+
     while (1) {
         TMessage structure = readStruct();
+        int status;
 
         switch (structure.Type) {
             case FIBONACCI:
-                printf("FIBONACCI\n");
+//                pthread_create(&thread[threadsCount], NULL, fibonacciThread, structure.Data[0]);
+//                threadsCount++;
+                break;
                 break;
             case POW:
-                printf("POW\n");
+//                pthread_create(&thread[threadsCount], NULL, powThread, &structure);
+//                threadsCount++;
                 break;
-            case BUBBLE_SORT_UINT64:
-                printf("BUBBLE_SORT_UINT64\n");
+            case BUBBLE_SORT_UINT64: {
+//                pthread_create(&reader_threads[threadsCount], NULL, bubbleSortThread,
+//                               (void *) &structure);   //threadsCount
+//                pthread_join(reader_threads[threadsCount], NULL);
+//
+//                threadsCount++;
                 break;
+            }
+
             case STOP:
                 goto quit;
         }
     }
     quit:
+
+    for (int i = 0; i < threadsCount; i++) {
+        pthread_join(reader_threads[i], NULL);
+    }
+
     return 0;
 }
 
 int main() {
-    tatarTest();
     pthread_t thread;
     pthread_create(&thread, NULL, reader, NULL);
-    pthread_join(thread, NULL);
+
+    int status = pthread_join(thread, NULL);
+    if (status != 0) {
+        printf("main error: can't create thread, status = %d\n", status);
+    }
     return 0;
 }
 

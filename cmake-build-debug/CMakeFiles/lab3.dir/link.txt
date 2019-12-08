@@ -1,1 +1,1 @@
-/usr/bin/cc -g  -Wl,--enable-auto-import CMakeFiles/lab3.dir/main.c.o CMakeFiles/lab3.dir/queue.c.o  -o lab3.exe -Wl,--out-implib,liblab3.dll.a -Wl,--major-image-version,0,--minor-image-version,0 
+/usr/bin/cc -g  -Wl,--enable-auto-import CMakeFiles/lab3.dir/main.c.o  -o lab3.exe -Wl,--out-implib,liblab3.dll.a -Wl,--major-image-version,0,--minor-image-version,0 

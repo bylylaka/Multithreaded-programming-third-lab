@@ -23,16 +23,13 @@ namespace TestGen
 
 		static void Main(string[] args)
 		{
-			while (true)
+			TMessage structure;
+			do
 			{
-				var structure = GenerateStructure();
+				structure = GenerateStructure();
 				WriteStructure(structure);
-
-				if (structure.type == EType.STOP)
-				{
-					return;
-				}
 			}
+			while (structure.type != EType.STOP);
 		}
 
 		public static void WriteStructure(TMessage structure)
@@ -52,27 +49,29 @@ namespace TestGen
 			var type = random.Next(values.Length);
 
 			var size = 0;
+			var data = new List<int>();
 
 			switch (type)
 			{
 				case (int)EType.FIBONACCI:
 					size = 1;
+					data = new List<int>() { random.Next(-50, 50) };
 					break;
 				case (int)EType.POW:
 					size = 2;
+					data = new List<int>() { random.Next(0, 5), random.Next(1, 20) };
 					break;
 				case (int)EType.BUBBLE_SORT_UINT64:
-					size = random.Next(1, 50); //add tests for minuses and zero
+					size = random.Next(1, 50);
+					data = new List<int>();
+					for (var elementDataIndex = 0; elementDataIndex < size; elementDataIndex++)
+					{
+						var elementDataValue = random.Next(-50, 50);
+						data.Add(elementDataValue);
+					}
 					break;
 				case (int)EType.STOP:
 					break;
-			}
-
-			var data = new List<int>();
-			for (var elementDataIndex = 0; elementDataIndex < size; elementDataIndex++)
-			{
-				var elementDataValue = random.Next(-100, 100);
-				data.Add(elementDataValue);
 			}
 
 			var structure = new TMessage()
