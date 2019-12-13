@@ -17,6 +17,4 @@ pthread.h
 -
 math.h
 -
-errno.h
--
 

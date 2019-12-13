@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <math.h>
-#include <errno.h>
 
 pthread_mutex_t queueMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t writerMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -17,8 +16,8 @@ typedef enum {
 
 typedef struct tMessage {
     EType Type;
-    uint64_t Size;
-    uint64_t *Data;
+    int Size;
+    int *Data;
 } TMessage;
 
 TMessage readStruct() {
@@ -31,10 +30,10 @@ TMessage readStruct() {
 
     read(0, size, sizeof(int));
     structure.Size = *size;
-    structure.Data = malloc(*size * sizeof(int));
+    structure.Data = malloc(structure.Size * sizeof(int));
 
-    int *buf = malloc(*size * sizeof(int));
-    for (int i = 0; i < *size; i++) {
+    int *buf = malloc((structure.Size + 1) * sizeof(int));
+    for (int i = 0; i < structure.Size; i++) {
         read(0, buf, sizeof(int));
         structure.Data += i;
         *structure.Data = *buf;
@@ -45,8 +44,7 @@ TMessage readStruct() {
 }
 
 void *bubbleSortThread(TMessage *structure) {
-    pthread_mutex_unlock(&writerMutex);
-
+    printf("size: %d\n", structure->Size);
     for (int i = 0; i < structure->Size - 1; i++) {
         for (int j = 0; j < structure->Size - i - 1; j++) {
             if (structure->Data[j] > structure->Data[j + 1]) {
@@ -61,16 +59,15 @@ void *bubbleSortThread(TMessage *structure) {
     for (int i = 0; i < structure->Size; i++) {
         printf("e[%d]: %d\n", i, structure->Data[i]);
     }
+    printf("\n");
     pthread_mutex_unlock(&writerMutex);
-    printf("\n\n\n\n\n\n");
-
     return 0;
 }
 
-void *powThread(void *args) {
-    TMessage *structure = args;
+void *powThread(TMessage *structure) {
     float result = powf((float) structure->Data[0], (float) structure->Data[1]);
     printf("%d   %d   ->   %.0f\n", structure->Data[0], structure->Data[1], result);
+    return 0;
 }
 
 int fibonacciCalculator(int n) {
@@ -85,57 +82,64 @@ void *fibonacciThread(int n) {
     }
     int result = fibonacciCalculator(n);
     printf("fib: %d\n", result);
+    return 0;
 }
 
 void *reader(void *args) {
-    pthread_t reader_threads[100];  //TODO: realloc
+    pthread_t threads[100];  //TODO: realloc
+    TMessage structures[100]; //TODO: realloc
     int threadsCount = 0;
+    int status = 0;
+    pthread_t tt;
+    int flag = 0;
+    while (flag == 0) {
+        structures[threadsCount] = readStruct();
 
-
-    while (1) {
-        TMessage structure = readStruct();
-        int status;
-
-        switch (structure.Type) {
+        switch (structures[threadsCount].Type) {
             case FIBONACCI:
-//                pthread_create(&thread[threadsCount], NULL, fibonacciThread, structure.Data[0]);
-//                threadsCount++;
-                break;
+                pthread_create(&threads[threadsCount], NULL, fibonacciThread, structures[threadsCount].Data[0]);
+                threadsCount++;
                 break;
             case POW:
-//                pthread_create(&thread[threadsCount], NULL, powThread, &structure);
-//                threadsCount++;
+                status = pthread_create(&threads[threadsCount], NULL, powThread, (void *) &structures[threadsCount]);
+                if (status != 0) {
+                    printf("error: %d\n", status);
+                }
+                threadsCount++;
                 break;
-            case BUBBLE_SORT_UINT64: {
-//                pthread_create(&reader_threads[threadsCount], NULL, bubbleSortThread,
-//                               (void *) &structure);   //threadsCount
-//                pthread_join(reader_threads[threadsCount], NULL);
-//
-//                threadsCount++;
+            case BUBBLE_SORT_UINT64:
+                pthread_create(&threads[threadsCount], NULL, bubbleSortThread, (void *) &structures[threadsCount]);
+                threadsCount++;
                 break;
-            }
-
             case STOP:
-                goto quit;
+                flag = 1;
+                break;
         }
     }
-    quit:
 
     for (int i = 0; i < threadsCount; i++) {
-        pthread_join(reader_threads[i], NULL);
+        int status = pthread_join(threads[i], NULL);
+        if (status != 0) {
+            printf("error: %d\n", status);
+        }
     }
 
     return 0;
 }
 
 int main() {
+    int status = 0;
     pthread_t thread;
-    pthread_create(&thread, NULL, reader, NULL);
-
-    int status = pthread_join(thread, NULL);
+    status = pthread_create(&thread, NULL, reader, NULL);
     if (status != 0) {
-        printf("main error: can't create thread, status = %d\n", status);
+        printf("main error: can't create main thread 0, status = %d\n", status);
     }
+
+    status = pthread_join(thread, NULL);
+    if (status != 0) {
+        printf("main error: can't create main thread, status = %d\n", status);
+    }
+
     return 0;
 }
 

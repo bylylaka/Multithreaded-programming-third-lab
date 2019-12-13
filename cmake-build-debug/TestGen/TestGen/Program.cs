@@ -24,12 +24,20 @@ namespace TestGen
 		static void Main(string[] args)
 		{
 			TMessage structure;
-			do
+
+			for (var i = 0; i < 10; i++)
 			{
 				structure = GenerateStructure();
 				WriteStructure(structure);
 			}
-			while (structure.type != EType.STOP);
+
+			var stopMesage = new TMessage
+			{
+				type = EType.STOP,
+				size = 0,
+				data = new List<int>()
+			};
+			WriteStructure(stopMesage);
 		}
 
 		public static void WriteStructure(TMessage structure)
@@ -45,9 +53,7 @@ namespace TestGen
 		{
 			var random = new Random();
 
-			Array values = Enum.GetValues(typeof(EType));
-			var type = random.Next(values.Length);
-
+			var type = random.Next((int)EType.FIBONACCI, (int)EType.STOP);
 			var size = 0;
 			var data = new List<int>();
 
@@ -55,18 +61,18 @@ namespace TestGen
 			{
 				case (int)EType.FIBONACCI:
 					size = 1;
-					data = new List<int>() { random.Next(-50, 50) };
+					data = new List<int>() { random.Next(30) };
 					break;
 				case (int)EType.POW:
 					size = 2;
-					data = new List<int>() { random.Next(0, 5), random.Next(1, 20) };
+					data = new List<int>() { random.Next(0, 5), random.Next(1, 10) };
 					break;
 				case (int)EType.BUBBLE_SORT_UINT64:
 					size = random.Next(1, 50);
 					data = new List<int>();
 					for (var elementDataIndex = 0; elementDataIndex < size; elementDataIndex++)
 					{
-						var elementDataValue = random.Next(-50, 50);
+						var elementDataValue = random.Next(0, 500);
 						data.Add(elementDataValue);
 					}
 					break;
