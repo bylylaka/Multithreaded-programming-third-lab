@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <math.h>
+#include <sys/fcntl.h>
 
 pthread_mutex_t queueMutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -129,7 +130,14 @@ void *fibonacciThread(TMessage *structure) {
 }
 
 void *writer(void *args) {
-    while (1){
+    FILE *fd;
+    fd = fopen("out.txt", "w");
+    if ((int) fd == -1) {
+        printf("Cannot open file.\n");
+        exit(1);;
+    }
+
+    while (1) {
         if (isemptyQueue()) {
             continue;
         }
@@ -137,21 +145,22 @@ void *writer(void *args) {
 
         switch (message.Type) {
             case FIBONACCI:
-                printf("Fibonacci from %.0f is %.0f\n", message.Data[0], message.Data[1]);
+                fprintf(fd, "Fibonacci from %.0f is %.0f\r\n", message.Data[0], message.Data[1]);
                 break;
             case POW:
-                printf("%.0f^%.0f=%.0f\n", message.Data[0], message.Data[1], message.Data[2]);
+                fprintf(fd, "%.0f^%.0f=%.0f\r\n", message.Data[0], message.Data[1], message.Data[2]);
                 break;
             case BUBBLE_SORT_UINT64:
-                printf("bubble sorted array size is %d\n", message.Size);
+                fprintf(fd, "bubble sorted array size is %d\r\n", message.Size);
                 for (int i = 0; i < message.Size; i++) {
-                    printf("e[%d]: %.0f\n", i, message.Data[i]);
+                    fprintf(fd, "e[%d]: %.0f\r\n", i, message.Data[i]);
                 }
                 break;
             case STOP:
+                fclose(fd);
                 return 0;
         }
-        printf("\n");
+        fprintf(fd, "\n");
     }
 }
 
