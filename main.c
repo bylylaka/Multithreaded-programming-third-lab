@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <math.h>
-#include <sys/fcntl.h>
+#include <string.h>
 
 pthread_mutex_t queueMutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -207,7 +207,17 @@ void *reader(void *args) {
     return 0;
 }
 
-int main() {
+int main(int argc, char **argv) {
+    if (argc != 3 || strcmp(argv[1], "–strategy") != 0) {
+        printf("please, use -strategy as all options.\n");
+        exit(1);
+    }
+
+    if (strcmp(argv[2], "per_thread")) {
+        printf("please, use per_thread as value for -strategy.\n");
+        exit(1);
+    }
+
     int status = 0;
     pthread_t readerThread;
     pthread_t writerThread;

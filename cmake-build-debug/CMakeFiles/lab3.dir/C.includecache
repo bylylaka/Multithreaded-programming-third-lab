@@ -17,6 +17,6 @@ pthread.h
 -
 math.h
 -
-sys/fcntl.h
+string.h
 -
 
