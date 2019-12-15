@@ -4,8 +4,10 @@
 #include <pthread.h>
 #include <math.h>
 #include <string.h>
+#include <unistd.h>
 
 pthread_mutex_t queueMutex = PTHREAD_MUTEX_INITIALIZER;
+int wasStopped = 0;
 
 typedef enum {
     FIBONACCI,
@@ -19,6 +21,25 @@ typedef struct tMessage {
     int Size;
     float *Data;
 } TMessage;
+
+typedef struct metric {
+    int Size;
+    int64_t *Data;
+} Metric;
+
+struct metric metric_reader_fibonacci;
+struct metric metric_reader_pow;
+struct metric metric_reader_bubble_sort;
+struct metric metric_reader_stop;
+struct metric metric_writer_fibonacci;
+struct metric metric_writer_pow;
+struct metric metric_writer_bubble_sort;
+struct metric metric_writer_stop;
+struct metric metric_fibonacci;
+struct metric metric_pow;
+struct metric metric_bubble_sort;
+struct metric metric_stop;
+//END METRICS
 
 // QUEUE
 #define QMAX 1000
@@ -92,6 +113,22 @@ TMessage readStruct() {
     return structure;
 }
 
+void makeDiagramm(Metric metric, FILE *fd) {
+    for (int i = 0; i < metric.Size - 1; i++) {
+        for (int j = 0; j < metric.Size - i - 1; j++) {
+            if (metric.Data[j] > metric.Data[j + 1]) {
+                int tmp = metric.Data[j];
+                metric.Data[j] = metric.Data[j + 1];
+                metric.Data[j + 1] = tmp;
+            }
+        }
+    }
+    for (int i = metric.Size - 1; i >= 0; i--) {
+        float percentel = (100 * (i + 1)) / metric.Size;
+        fprintf(fd, "Затрачено время: [%.0f] = %d мс\n", percentel, metric_fibonacci.Data[i]);
+    }
+}
+
 void *bubbleSortThread(TMessage *structure) {
     for (int i = 0; i < structure->Size - 1; i++) {
         for (int j = 0; j < structure->Size - i - 1; j++) {
@@ -120,12 +157,23 @@ int fibonacciCalculator(int n) {
 }
 
 void *fibonacciThread(TMessage *structure) {
+    struct timespec mt1, mt2;
+    clock_gettime(CLOCK_MONOTONIC, &mt1);
+
     if (structure->Data[0] <= 0) {
         return 0;
     }
     int result = fibonacciCalculator(structure->Data[0]);
     structure->Data[1] = result;
     insertInQueue(*structure);
+
+    clock_gettime(CLOCK_MONOTONIC, &mt2);
+    int64_t measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+                       ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+
+    metric_fibonacci.Data[metric_fibonacci.Size] = measure;
+    metric_fibonacci.Size++;
+
     return 0;
 }
 
@@ -164,12 +212,47 @@ void *writer(void *args) {
     }
 }
 
+void *metricMethod(void *args) {
+    do {
+        usleep(10000);  //TODO: chagne to param (мкс)
+        FILE *fd;
+        fd = fopen("metric.txt", "w");
+        if ((int) fd == -1) {
+            printf("Cannot open file.\n");
+            exit(1);;
+        }
+
+
+
+
+
+
+
+
+        fprintf(fd, "Выполнение фибоначчи:\n");
+        makeDiagramm(metric_fibonacci, fd);
+
+
+
+
+
+
+
+
+
+
+
+        fclose(fd);
+    } while (wasStopped == 0);
+
+    return 0;
+}
+
 void *reader(void *args) {
     pthread_t threads[100];  //TODO: realloc
     TMessage structures[100]; //TODO: realloc
     int threadsCount = 0;
     int status = 0;
-    pthread_t tt;
     int flag = 0;
     while (flag == 0) {
         structures[threadsCount] = readStruct();
@@ -207,7 +290,36 @@ void *reader(void *args) {
     return 0;
 }
 
+void initMetrics() {
+    metric_reader_fibonacci.Size = 0;
+    metric_reader_pow.Size = 0;
+    metric_reader_bubble_sort.Size = 0;
+    metric_reader_stop.Size = 0;
+    metric_writer_fibonacci.Size = 0;
+    metric_writer_pow.Size = 0;
+    metric_writer_bubble_sort.Size = 0;
+    metric_writer_stop.Size = 0;
+    metric_fibonacci.Size = 0;
+    metric_pow.Size = 0;
+    metric_bubble_sort.Size = 0;
+    metric_stop.Size = 0;
+
+    metric_reader_fibonacci.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_reader_pow.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_reader_bubble_sort.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_reader_stop.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_writer_fibonacci.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_writer_pow.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_writer_bubble_sort.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_writer_stop.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_fibonacci.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_pow.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_bubble_sort.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_stop.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+}
+
 int main(int argc, char **argv) {
+    initMetrics();
     if (argc != 3 || strcmp(argv[1], "–strategy") != 0) {
         printf("please, use -strategy as all options.\n");
         exit(1);
@@ -221,17 +333,23 @@ int main(int argc, char **argv) {
     int status = 0;
     pthread_t readerThread;
     pthread_t writerThread;
+    pthread_t metricThread;
 
     initQueue();
 
+    status = pthread_create(&metricThread, NULL, metricMethod, NULL);
+    if (status != 0) {
+        printf("main error: can't create metric thread, status = %d\n", status);
+    }
+
     status = pthread_create(&readerThread, NULL, reader, NULL);
     if (status != 0) {
-        printf("main error: can't create reader thread 0, status = %d\n", status);
+        printf("main error: can't create reader thread, status = %d\n", status);
     }
 
     status = pthread_create(&writerThread, NULL, writer, NULL);
     if (status != 0) {
-        printf("main error: can't create writer thread 0, status = %d\n", status);
+        printf("main error: can't create writer thread, status = %d\n", status);
     }
 
     status = pthread_join(readerThread, NULL);
@@ -242,6 +360,13 @@ int main(int argc, char **argv) {
     status = pthread_join(writerThread, NULL);
     if (status != 0) {
         printf("main error: can't join writer thread, status = %d\n", status);
+    }
+
+    wasStopped = 1;
+
+    status = pthread_join(metricThread, NULL);
+    if (status != 0) {
+        printf("main error: can't join metric thread, status = %d\n", status);
     }
     return 0;
 }
