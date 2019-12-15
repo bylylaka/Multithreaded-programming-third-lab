@@ -125,11 +125,14 @@ void makeDiagramm(Metric metric, FILE *fd) {
     }
     for (int i = metric.Size - 1; i >= 0; i--) {
         float percentel = (100 * (i + 1)) / metric.Size;
-        fprintf(fd, "Затрачено время: [%.0f] = %d мс\n", percentel, metric_fibonacci.Data[i]);
+        fprintf(fd, "[%.0f] = %d мс\n", percentel, metric_fibonacci.Data[i]);
     }
 }
 
 void *bubbleSortThread(TMessage *structure) {
+    struct timespec mt1, mt2;
+    clock_gettime(CLOCK_MONOTONIC, &mt1);
+
     for (int i = 0; i < structure->Size - 1; i++) {
         for (int j = 0; j < structure->Size - i - 1; j++) {
             if (structure->Data[j] > structure->Data[j + 1]) {
@@ -140,13 +143,30 @@ void *bubbleSortThread(TMessage *structure) {
         }
     }
     insertInQueue(*structure);
+
+    clock_gettime(CLOCK_MONOTONIC, &mt2);
+    int64_t measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+                       ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+    metric_bubble_sort.Data[metric_bubble_sort.Size] = measure;
+    metric_bubble_sort.Size++;
+
     return 0;
 }
 
 void *powThread(TMessage *structure) {
+    struct timespec mt1, mt2;
+    clock_gettime(CLOCK_MONOTONIC, &mt1);
+
     float result = powf((float) structure->Data[0], (float) structure->Data[1]);
     structure->Data[2] = result;
     insertInQueue(*structure);
+
+    clock_gettime(CLOCK_MONOTONIC, &mt2);
+    int64_t measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+                       ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+    metric_pow.Data[metric_pow.Size] = measure;
+    metric_pow.Size++;
+
     return 0;
 }
 
@@ -231,6 +251,12 @@ void *metricMethod(void *args) {
 
         fprintf(fd, "Выполнение фибоначчи:\n");
         makeDiagramm(metric_fibonacci, fd);
+        fprintf(fd, "\n");
+        fprintf(fd, "Выполнение Вычисления в степернь:\n");
+        makeDiagramm(metric_pow, fd);
+        fprintf(fd, "\n");
+        fprintf(fd, "Выполнение пузырьковой сортиковки:\n");
+        makeDiagramm(metric_bubble_sort, fd);
 
 
 
