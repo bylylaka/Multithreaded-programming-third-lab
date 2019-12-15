@@ -4,7 +4,6 @@
 #include <pthread.h>
 #include <math.h>
 #include <string.h>
-#include <unistd.h>
 
 pthread_mutex_t queueMutex = PTHREAD_MUTEX_INITIALIZER;
 int wasStopped = 0;
@@ -123,9 +122,10 @@ void makeDiagramm(Metric metric, FILE *fd) {
             }
         }
     }
+
     for (int i = metric.Size - 1; i >= 0; i--) {
         float percentel = (100 * (i + 1)) / metric.Size;
-        fprintf(fd, "[%.0f] = %d мс\n", percentel, metric_fibonacci.Data[i]);
+        fprintf(fd, "[%.0f] = %d мс\n", percentel, metric.Data[i]);
     }
 }
 
@@ -199,6 +199,7 @@ void *fibonacciThread(TMessage *structure) {
 
 void *writer(void *args) {
     FILE *fd;
+    int64_t measure;
     fd = fopen("out.txt", "w");
     if ((int) fd == -1) {
         printf("Cannot open file.\n");
@@ -210,19 +211,39 @@ void *writer(void *args) {
             continue;
         }
         TMessage message = removeQueue();
+        struct timespec mt1, mt2;
+        clock_gettime(CLOCK_MONOTONIC, &mt1);
 
         switch (message.Type) {
             case FIBONACCI:
                 fprintf(fd, "Fibonacci from %.0f is %.0f\r\n", message.Data[0], message.Data[1]);
+
+                clock_gettime(CLOCK_MONOTONIC, &mt2);
+                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+                metric_writer_fibonacci.Data[metric_writer_fibonacci.Size] = measure;
+                metric_writer_fibonacci.Size++;
                 break;
             case POW:
                 fprintf(fd, "%.0f^%.0f=%.0f\r\n", message.Data[0], message.Data[1], message.Data[2]);
+
+                clock_gettime(CLOCK_MONOTONIC, &mt2);
+                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+                metric_writer_pow.Data[metric_writer_pow.Size] = measure;
+                metric_writer_pow.Size++;
                 break;
             case BUBBLE_SORT_UINT64:
                 fprintf(fd, "bubble sorted array size is %d\r\n", message.Size);
                 for (int i = 0; i < message.Size; i++) {
                     fprintf(fd, "e[%d]: %.0f\r\n", i, message.Data[i]);
                 }
+
+                clock_gettime(CLOCK_MONOTONIC, &mt2);
+                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+                metric_writer_bubble_sort.Data[metric_writer_bubble_sort.Size] = measure;
+                metric_writer_bubble_sort.Size++;
                 break;
             case STOP:
                 fclose(fd);
@@ -242,13 +263,6 @@ void *metricMethod(void *args) {
             exit(1);;
         }
 
-
-
-
-
-
-
-
         fprintf(fd, "Выполнение фибоначчи:\n");
         makeDiagramm(metric_fibonacci, fd);
         fprintf(fd, "\n");
@@ -257,16 +271,24 @@ void *metricMethod(void *args) {
         fprintf(fd, "\n");
         fprintf(fd, "Выполнение пузырьковой сортиковки:\n");
         makeDiagramm(metric_bubble_sort, fd);
-
-
-
-
-
-
-
-
-
-
+        fprintf(fd, "\n");
+        fprintf(fd, "Чтение структуры для фибоначчи:\n");
+        makeDiagramm(metric_reader_fibonacci, fd);
+        fprintf(fd, "\n");
+        fprintf(fd, "Чтение структуры для вычисления в степернь:\n");
+        makeDiagramm(metric_reader_pow, fd);
+        fprintf(fd, "\n");
+        fprintf(fd, "Чтение структуры для пузырьковой сортиковки:\n");
+        makeDiagramm(metric_reader_bubble_sort, fd);
+        fprintf(fd, "\n");
+        fprintf(fd, "Запись структуры для фибоначчи:\n");
+        makeDiagramm(metric_writer_fibonacci, fd);
+        fprintf(fd, "\n");
+        fprintf(fd, "Запись структуры для вычисления в степернь:\n");
+        makeDiagramm(metric_writer_pow, fd);
+        fprintf(fd, "\n");
+        fprintf(fd, "Запись структуры для пузырьковой сортиковки:\n");
+        makeDiagramm(metric_writer_bubble_sort, fd);
 
         fclose(fd);
     } while (wasStopped == 0);
@@ -280,13 +302,22 @@ void *reader(void *args) {
     int threadsCount = 0;
     int status = 0;
     int flag = 0;
+    int64_t measure;
     while (flag == 0) {
         structures[threadsCount] = readStruct();
+        struct timespec mt1, mt2;
+        clock_gettime(CLOCK_MONOTONIC, &mt1);
 
         switch (structures[threadsCount].Type) {
             case FIBONACCI:
                 pthread_create(&threads[threadsCount], NULL, fibonacciThread, &structures[threadsCount]);
                 threadsCount++;
+
+                clock_gettime(CLOCK_MONOTONIC, &mt2);
+                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+                                   ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+                metric_reader_fibonacci.Data[metric_reader_fibonacci.Size] = measure;
+                metric_reader_fibonacci.Size++;
                 break;
             case POW:
                 status = pthread_create(&threads[threadsCount], NULL, powThread, (void *) &structures[threadsCount]);
@@ -294,10 +325,22 @@ void *reader(void *args) {
                     printf("error: %d\n", status);
                 }
                 threadsCount++;
+
+                clock_gettime(CLOCK_MONOTONIC, &mt2);
+                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+                                   ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+                metric_reader_pow.Data[metric_reader_pow.Size] = measure;
+                metric_reader_pow.Size++;
                 break;
             case BUBBLE_SORT_UINT64:
                 pthread_create(&threads[threadsCount], NULL, bubbleSortThread, (void *) &structures[threadsCount]);
                 threadsCount++;
+
+                clock_gettime(CLOCK_MONOTONIC, &mt2);
+                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+                metric_reader_bubble_sort.Data[metric_reader_bubble_sort.Size] = measure;
+                metric_reader_bubble_sort.Size++;
                 break;
             case STOP:
                 insertInQueue(structures[threadsCount]);
