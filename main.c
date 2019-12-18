@@ -7,6 +7,12 @@
 
 pthread_mutex_t queueMutex = PTHREAD_MUTEX_INITIALIZER;
 int wasStopped = 0;
+int mkSeconds = 0;
+char *strategy;
+
+typedef enum {
+    PER_THREAD
+} StrategyType;
 
 typedef enum {
     FIBONACCI,
@@ -127,6 +133,7 @@ void makeDiagramm(Metric metric, FILE *fd) {
         float percentel = (100 * (i + 1)) / metric.Size;
         fprintf(fd, "[%.0f] = %d мс\n", percentel, metric.Data[i]);
     }
+    fprintf(fd, "[%.0f] = %d мс\n", 0, 0);
 }
 
 void *bubbleSortThread(TMessage *structure) {
@@ -253,45 +260,50 @@ void *writer(void *args) {
     }
 }
 
+void printMetric(){
+    FILE *fd;
+    fd = fopen("metric.txt", "w");
+    if ((int) fd == -1) {
+        printf("Cannot open file.\n");
+        exit(1);;
+    }
+
+    fprintf(fd, "Выполнение фибоначчи:\n");
+    makeDiagramm(metric_fibonacci, fd);
+    fprintf(fd, "\n");
+    fprintf(fd, "Выполнение Вычисления в степернь:\n");
+    makeDiagramm(metric_pow, fd);
+    fprintf(fd, "\n");
+    fprintf(fd, "Выполнение пузырьковой сортиковки:\n");
+    makeDiagramm(metric_bubble_sort, fd);
+    fprintf(fd, "\n");
+    fprintf(fd, "Чтение структуры для фибоначчи:\n");
+    makeDiagramm(metric_reader_fibonacci, fd);
+    fprintf(fd, "\n");
+    fprintf(fd, "Чтение структуры для вычисления в степернь:\n");
+    makeDiagramm(metric_reader_pow, fd);
+    fprintf(fd, "\n");
+    fprintf(fd, "Чтение структуры для пузырьковой сортиковки:\n");
+    makeDiagramm(metric_reader_bubble_sort, fd);
+    fprintf(fd, "\n");
+    fprintf(fd, "Запись структуры для фибоначчи:\n");
+    makeDiagramm(metric_writer_fibonacci, fd);
+    fprintf(fd, "\n");
+    fprintf(fd, "Запись структуры для вычисления в степернь:\n");
+    makeDiagramm(metric_writer_pow, fd);
+    fprintf(fd, "\n");
+    fprintf(fd, "Запись структуры для пузырьковой сортиковки:\n");
+    makeDiagramm(metric_writer_bubble_sort, fd);
+
+    fclose(fd);
+}
+
 void *metricMethod(void *args) {
     do {
-        usleep(10000);  //TODO: chagne to param (мкс)
-        FILE *fd;
-        fd = fopen("metric.txt", "w");
-        if ((int) fd == -1) {
-            printf("Cannot open file.\n");
-            exit(1);;
-        }
-
-        fprintf(fd, "Выполнение фибоначчи:\n");
-        makeDiagramm(metric_fibonacci, fd);
-        fprintf(fd, "\n");
-        fprintf(fd, "Выполнение Вычисления в степернь:\n");
-        makeDiagramm(metric_pow, fd);
-        fprintf(fd, "\n");
-        fprintf(fd, "Выполнение пузырьковой сортиковки:\n");
-        makeDiagramm(metric_bubble_sort, fd);
-        fprintf(fd, "\n");
-        fprintf(fd, "Чтение структуры для фибоначчи:\n");
-        makeDiagramm(metric_reader_fibonacci, fd);
-        fprintf(fd, "\n");
-        fprintf(fd, "Чтение структуры для вычисления в степернь:\n");
-        makeDiagramm(metric_reader_pow, fd);
-        fprintf(fd, "\n");
-        fprintf(fd, "Чтение структуры для пузырьковой сортиковки:\n");
-        makeDiagramm(metric_reader_bubble_sort, fd);
-        fprintf(fd, "\n");
-        fprintf(fd, "Запись структуры для фибоначчи:\n");
-        makeDiagramm(metric_writer_fibonacci, fd);
-        fprintf(fd, "\n");
-        fprintf(fd, "Запись структуры для вычисления в степернь:\n");
-        makeDiagramm(metric_writer_pow, fd);
-        fprintf(fd, "\n");
-        fprintf(fd, "Запись структуры для пузырьковой сортиковки:\n");
-        makeDiagramm(metric_writer_bubble_sort, fd);
-
-        fclose(fd);
+        printMetric();
+        usleep(mkSeconds);
     } while (wasStopped == 0);
+    printMetric();
 
     return 0;
 }
@@ -315,7 +327,7 @@ void *reader(void *args) {
 
                 clock_gettime(CLOCK_MONOTONIC, &mt2);
                 measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
-                                   ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
                 metric_reader_fibonacci.Data[metric_reader_fibonacci.Size] = measure;
                 metric_reader_fibonacci.Size++;
                 break;
@@ -328,7 +340,7 @@ void *reader(void *args) {
 
                 clock_gettime(CLOCK_MONOTONIC, &mt2);
                 measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
-                                   ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
                 metric_reader_pow.Data[metric_reader_pow.Size] = measure;
                 metric_reader_pow.Size++;
                 break;
@@ -389,15 +401,37 @@ void initMetrics() {
 
 int main(int argc, char **argv) {
     initMetrics();
-    if (argc != 3 || strcmp(argv[1], "–strategy") != 0) {
-        printf("please, use -strategy as all options.\n");
+
+// read params
+    if (argc != 5) {
+        printf("please, define \"strategy\" and \"t\".\n");
         exit(1);
     }
 
-    if (strcmp(argv[2], "per_thread")) {
+    for (int i = 1; i < argc - 1; i++) {
+        if (strcmp(argv[i], "-t") == 0) {
+            sscanf(argv[i + 1], "%d", &mkSeconds);
+            if (mkSeconds <= 0) {
+                printf("timeout can't be less. than 1");
+                exit(1);
+            }
+        }
+
+        if (strcmp(argv[i], "–strategy") == 0) {
+            strategy = argv[i + 1];
+        }
+    }
+
+    if (strcmp(strategy, "per_thread") != 0) {
         printf("please, use per_thread as value for -strategy.\n");
         exit(1);
     }
+
+    if (mkSeconds == 0) {
+        printf("please, define \"strategy\" and \"t\".\n");
+        exit(1);
+    }
+//end read params
 
     int status = 0;
     pthread_t readerThread;
