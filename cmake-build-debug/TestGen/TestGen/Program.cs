@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MathNet.Numerics.Distributions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,6 +7,8 @@ namespace TestGen
 {
 	class Program
 	{
+		private static IContinuousDistribution _distribution;
+
 		public enum EType
 		{
 			FIBONACCI,
@@ -25,7 +28,13 @@ namespace TestGen
 		{
 			TMessage structure;
 
-			for (var i = 0; i < 10; i++)
+			if (!TryGetDistribution(args, out _distribution))
+			{
+				Console.WriteLine("Plase, define -mode (\"uniform\", \"exponential\") and params for distribution.");
+				Environment.Exit(1);
+			}
+
+			for (var i = 0; i < 100; i++)
 			{
 				structure = GenerateStructure();
 				WriteStructure(structure);
@@ -61,19 +70,18 @@ namespace TestGen
 			{
 				case (int)EType.FIBONACCI:
 					size = 1;
-					data = new List<int>() { random.Next(30) };
+					data = new List<int>() { (int)Math.Round(_distribution.Sample()) };
 					break;
 				case (int)EType.POW:
 					size = 2;
-					data = new List<int>() { random.Next(0, 5), random.Next(1, 10) };
+					data = new List<int>() { (int)Math.Round(_distribution.Sample()), (int)Math.Round(_distribution.Sample()) };
 					break;
 				case (int)EType.BUBBLE_SORT_UINT64:
-					size = random.Next(1, 50);
+					size = 50;
 					data = new List<int>();
 					for (var elementDataIndex = 0; elementDataIndex < size; elementDataIndex++)
 					{
-						var elementDataValue = random.Next(0, 500);
-						data.Add(elementDataValue);
+						data.Add((int)Math.Round(_distribution.Sample()));
 					}
 					break;
 				case (int)EType.STOP:
@@ -110,6 +118,58 @@ namespace TestGen
 			}
 
 			return intBytes;
+		}
+
+		public static bool TryGetDistribution(string[] args, out IContinuousDistribution distribution)
+		{
+			distribution = null;
+			var mode = string.Empty;
+			var parameters = new List<int>();
+			var parametersIndex = args.ToList().FindIndex(arg => string.Equals("-param", arg));
+
+			foreach (var arg in args.Select((value, index) => (value, index)).SkipLast(1))
+			{
+				if (string.Equals(arg.value, "-mode"))
+				{
+					mode = args[arg.index + 1].ToLower();
+					break;
+				}
+			}
+
+			for (var i = parametersIndex + 1; i < args.Count() && parametersIndex != -1; i++)
+			{
+				if (int.TryParse(args[i], out var parsedNumber))
+				{
+					parameters.Add(parsedNumber);
+				}
+			}
+
+			switch (mode)
+			{
+				case "uniform":
+					if (parameters.Count != 2)
+					{
+						return false;
+					}
+					distribution = new ContinuousUniform(parameters[0], parameters[1]);
+					return true;
+				case "exponencial":
+					if (parameters.Count != 1)
+					{
+						return false;
+					}
+					distribution = new Exponential(parameters[0]);
+					return true;
+				case "normal":
+					if (parameters.Count != 2)
+					{
+						return false;
+					}
+					distribution = new Normal(parameters[0], parameters[1]);
+					return true;
+				default:
+					return false;
+			}
 		}
 	}
 }

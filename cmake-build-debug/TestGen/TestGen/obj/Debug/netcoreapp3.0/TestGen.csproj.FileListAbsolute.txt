@@ -19,3 +19,5 @@ D:\CLionProjects\lab3\cmake-build-debug\TestGen\TestGen\obj\Debug\netcoreapp3.0\
 D:\CLionProjects\lab3\cmake-build-debug\TestGen\TestGen\obj\Debug\netcoreapp3.0\TestGen.AssemblyInfo.cs
 D:\CLionProjects\lab3\cmake-build-debug\TestGen\TestGen\obj\Debug\netcoreapp3.0\TestGen.dll
 D:\CLionProjects\lab3\cmake-build-debug\TestGen\TestGen\obj\Debug\netcoreapp3.0\TestGen.pdb
+D:\CLionProjects\lab3\cmake-build-debug\TestGen\TestGen\bin\Debug\netcoreapp3.0\MathNet.Numerics.dll
+D:\CLionProjects\lab3\cmake-build-debug\TestGen\TestGen\obj\Debug\netcoreapp3.0\TestGen.csproj.CopyComplete

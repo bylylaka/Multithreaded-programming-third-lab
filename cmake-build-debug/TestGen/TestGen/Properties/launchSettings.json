@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TestGen": {
+      "commandName": "Project",
+      "commandLineArgs": "-mode uniform -param 1 10"
+    }
+  }
+}

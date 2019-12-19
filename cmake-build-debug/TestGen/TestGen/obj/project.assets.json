@@ -1,11 +1,43 @@
 {
   "version": 3,
   "targets": {
-    ".NETCoreApp,Version=v3.0": {}
+    ".NETCoreApp,Version=v3.0": {
+      "MathNet.Numerics/4.9.0": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/MathNet.Numerics.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/MathNet.Numerics.dll": {}
+        }
+      }
+    }
   },
-  "libraries": {},
+  "libraries": {
+    "MathNet.Numerics/4.9.0": {
+      "sha512": "4cYzhuMDq57oC6lwhMmuigdhP+oywmp1bMtFzvzz4wYr5eWbg0JLDPo/L1juqDkIBj+rc3FrxUEX7jcHRmnF+w==",
+      "type": "package",
+      "path": "mathnet.numerics/4.9.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net40/MathNet.Numerics.dll",
+        "lib/net40/MathNet.Numerics.xml",
+        "lib/net461/MathNet.Numerics.dll",
+        "lib/net461/MathNet.Numerics.xml",
+        "lib/netstandard1.3/MathNet.Numerics.dll",
+        "lib/netstandard1.3/MathNet.Numerics.xml",
+        "lib/netstandard2.0/MathNet.Numerics.dll",
+        "lib/netstandard2.0/MathNet.Numerics.xml",
+        "mathnet.numerics.4.9.0.nupkg.sha512",
+        "mathnet.numerics.nuspec"
+      ]
+    }
+  },
   "projectFileDependencyGroups": {
-    ".NETCoreApp,Version=v3.0": []
+    ".NETCoreApp,Version=v3.0": [
+      "MathNet.Numerics >= 4.9.0"
+    ]
   },
   "packageFolders": {
     "C:\\Users\\Максим\\.nuget\\packages\\": {},
@@ -47,6 +79,12 @@
     },
     "frameworks": {
       "netcoreapp3.0": {
+        "dependencies": {
+          "MathNet.Numerics": {
+            "target": "Package",
+            "version": "[4.9.0, )"
+          }
+        },
         "imports": [
           "net461",
           "net462",
