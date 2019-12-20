@@ -130,12 +130,10 @@ void makeDiagramm(Metric metric, FILE *fd) {
     }
 
     for (int i = metric.Size - 1; i >= 0; i--) {
-        float percentel = (100 * (i + 1)) / metric.Size; //TODO: change
-//        fprintf(fd, "[%.0f] = %d мс\n", percentel, metric.Data[i]);
-        fprintf(fd, "%d\n", metric.Data[i]);
+        float percentel = (100 * (i + 1)) / metric.Size;
+        fprintf(fd, "[%.0f] = %d мс\n", percentel, metric.Data[i]);
     }
-//    fprintf(fd, "[%.0f] = %d мс\n", 0, 0);
-    fprintf(fd, "%d\n", 0); //TODO: change
+    fprintf(fd, "[%.0f] = %d мс\n", 0, 0);
 }
 
 void *bubbleSortThread(TMessage *structure) {

@@ -16,34 +16,11 @@ namespace TestGen
 				Environment.Exit(1);
 			}
 
-			//for (var i = 0; i < 100; i++)
-			//{
-			//	TMessage structure = myClass.GenerateStructure();
-			//	myClass.WriteStructure(structure);
-			//}
-
-
-			//TODO: START REMOVE
 			for (var i = 0; i < 100; i++)
 			{
-				TMessage structure = myClass.GenerateStructure(0);
+				TMessage structure = myClass.GenerateStructure();
 				myClass.WriteStructure(structure);
 			}
-			for (var i = 0; i < 100; i++)
-			{
-				TMessage structure = myClass.GenerateStructure(1);
-				myClass.WriteStructure(structure);
-			}
-			for (var i = 0; i < 100; i++)
-			{
-				TMessage structure = myClass.GenerateStructure(2);
-				myClass.WriteStructure(structure);
-			}
-			//END REMOVE
-
-
-
-
 
 			var stopMesage = new TMessage
 			{
