@@ -33,11 +33,60 @@ namespace TestGen
 			}
 		}
 
-		public TMessage GenerateStructure()
-		{
-			var random = new Random();
+		//public TMessage GenerateStructure()
+		//{
+		//	var random = new Random();
 
-			var type = random.Next((int)EType.FIBONACCI, (int)EType.STOP);
+		//	var type = random.Next((int)EType.FIBONACCI, (int)EType.STOP);
+		//	var size = 0;
+		//	var data = new List<int>();
+
+		//	switch (type)
+		//	{
+		//		case (int)EType.FIBONACCI:
+		//			size = 1;
+		//			data = new List<int>() { (int)Math.Round(_distribution.Sample()) };
+		//			break;
+		//		case (int)EType.POW:
+		//			size = 2;
+		//			data = new List<int>() { (int)Math.Round(_distribution.Sample()), (int)Math.Round(_distribution.Sample()) };
+		//			break;
+		//		case (int)EType.BUBBLE_SORT_UINT64:
+		//			size = 50;
+		//			data = new List<int>();
+		//			for (var elementDataIndex = 0; elementDataIndex < size; elementDataIndex++)
+		//			{
+		//				data.Add((int)Math.Round(_distribution.Sample()));
+		//			}
+		//			break;
+		//		case (int)EType.STOP:
+		//			break;
+		//	}
+
+		//	var structure = new TMessage()
+		//	{
+		//		type = (EType)type,
+		//		size = size,
+		//		data = data
+		//	};
+
+		//	return structure;
+		//}
+
+
+
+
+
+
+
+
+
+
+
+
+
+		public TMessage GenerateStructure(int type)	//TODO: killme
+		{
 			var size = 0;
 			var data = new List<int>();
 
@@ -72,6 +121,17 @@ namespace TestGen
 
 			return structure;
 		}
+
+
+
+
+
+
+
+
+
+
+
 
 		public List<byte> SerializeStruct(TMessage structure)
 		{
