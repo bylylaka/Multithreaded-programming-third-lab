@@ -260,7 +260,7 @@ void *writer(void *args) {
     }
 }
 
-void printMetric(){
+void printMetric() {
     FILE *fd;
     fd = fopen("metric.txt", "w");
     if ((int) fd == -1) {
@@ -309,13 +309,27 @@ void *metricMethod(void *args) {
 }
 
 void *reader(void *args) {
-    pthread_t threads[100];  //TODO: realloc
-    TMessage structures[100]; //TODO: realloc
+    int threadsMaxCount = 100;
+    pthread_t *threads = malloc((threadsMaxCount) * sizeof(pthread_t));
+    TMessage *structures = malloc((threadsMaxCount) * sizeof(TMessage));
     int threadsCount = 0;
     int status = 0;
     int flag = 0;
     int64_t measure;
+
     while (flag == 0) {
+        if (threadsCount >= threadsMaxCount) {
+            threadsMaxCount += 200;
+            if ((threads = (pthread_t *) realloc(threads, sizeof(pthread_t) * threadsMaxCount)) == NULL) {
+                printf("realloc error");
+                exit(1);
+            }
+            if ((structures = (TMessage *) realloc(structures, sizeof(TMessage) * threadsMaxCount)) == NULL) {
+                perror("realloc error");
+                exit(1);
+            }
+        }
+
         structures[threadsCount] = readStruct();
         struct timespec mt1, mt2;
         clock_gettime(CLOCK_MONOTONIC, &mt1);
@@ -334,7 +348,7 @@ void *reader(void *args) {
             case POW:
                 status = pthread_create(&threads[threadsCount], NULL, powThread, (void *) &structures[threadsCount]);
                 if (status != 0) {
-                    printf("error: %d\n", status);
+                    printf("pow create error: %d\n", status);
                 }
                 threadsCount++;
 
@@ -362,9 +376,9 @@ void *reader(void *args) {
     }
 
     for (int i = 0; i < threadsCount; i++) {
-        int status = pthread_join(threads[i], NULL);
+        status = pthread_join(threads[i], NULL);
         if (status != 0) {
-            printf("error: %d\n", status);
+            printf("join error on [%d] thread: %d\n", i, status);
         }
     }
 

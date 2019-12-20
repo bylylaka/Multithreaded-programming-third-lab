@@ -34,7 +34,7 @@ namespace TestGen
 				Environment.Exit(1);
 			}
 
-			for (var i = 0; i < 100; i++)
+			for (var i = 0; i < 2000; i++)
 			{
 				structure = GenerateStructure();
 				WriteStructure(structure);
