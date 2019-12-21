@@ -1,0 +1,527 @@
+        -:    0:Source:main.c
+        -:    0:Graph:main.gcno
+        -:    0:Data:main.gcda
+        -:    0:Runs:1
+        -:    0:Programs:1
+        -:    1:#include <stdio.h>
+        -:    2:#include <stdlib.h>
+        -:    3:#include <unistd.h>
+        -:    4:#include <pthread.h>
+        -:    5:#include <math.h>
+        -:    6:#include <string.h>
+        -:    7:#include <assert.h>
+        -:    8:
+        -:    9:pthread_mutex_t queueMutex = PTHREAD_MUTEX_INITIALIZER;
+        -:   10:int wasStopped = 0;
+        -:   11:int mkSeconds = 0;
+        -:   12:char *strategy;
+        -:   13:
+        -:   14:typedef enum {
+        -:   15:    PER_THREAD
+        -:   16:} StrategyType;
+        -:   17:
+        -:   18:typedef enum {
+        -:   19:    FIBONACCI,
+        -:   20:    POW,
+        -:   21:    BUBBLE_SORT_UINT64,
+        -:   22:    STOP
+        -:   23:} EType;
+        -:   24:
+        -:   25:typedef struct tMessage {
+        -:   26:    EType Type;
+        -:   27:    int Size;
+        -:   28:    float *Data;
+        -:   29:} TMessage;
+        -:   30:
+        -:   31:typedef struct metric {
+        -:   32:    int Size;
+        -:   33:    int64_t *Data;
+        -:   34:} Metric;
+        -:   35:
+        -:   36:struct metric metric_reader_fibonacci;
+        -:   37:struct metric metric_reader_pow;
+        -:   38:struct metric metric_reader_bubble_sort;
+        -:   39:struct metric metric_reader_stop;
+        -:   40:struct metric metric_writer_fibonacci;
+        -:   41:struct metric metric_writer_pow;
+        -:   42:struct metric metric_writer_bubble_sort;
+        -:   43:struct metric metric_writer_stop;
+        -:   44:struct metric metric_fibonacci;
+        -:   45:struct metric metric_pow;
+        -:   46:struct metric metric_bubble_sort;
+        -:   47:struct metric metric_stop;
+        -:   48://END METRICS
+        -:   49:
+        -:   50:// QUEUE
+        -:   51:#define QMAX 1000
+        -:   52:struct WriterQueue {
+        -:   53:    TMessage qu[QMAX];
+        -:   54:    int last, first;
+        -:   55:};
+        -:   56:
+        -:   57:struct WriterQueue writerQueue;
+        -:   58:
+        1:   59:void initQueue() {
+        1:   60:    writerQueue.first = 1;
+        1:   61:    writerQueue.last = 0;
+        1:   62:    return;
+        -:   63:}
+        -:   64:
+      101:   65:void insertInQueue(TMessage x) {
+      101:   66:    pthread_mutex_lock(queueMutex);
+      101:   67:    if (writerQueue.last < QMAX - 1) {
+      101:   68:        writerQueue.last++;
+      101:   69:        writerQueue.qu[writerQueue.last] = x;
+        -:   70:    }
+      101:   71:    pthread_mutex_unlock(queueMutex);
+      101:   72:}
+        -:   73:
+ 22269522:   74:int isemptyQueue() {
+ 22269522:   75:    if (writerQueue.last < writerQueue.first) return (1);
+      192:   76:    else return (0);
+        -:   77:}
+        -:   78:
+       96:   79:TMessage removeQueue() {
+       96:   80:    pthread_mutex_lock(queueMutex);
+        -:   81:    TMessage x;
+        -:   82:    int h;
+       96:   83:    if (isemptyQueue() == 1) {
+    #####:   84:        TMessage empty = {
+        -:   85:                .Size = 0
+        -:   86:        };
+    #####:   87:        return empty;
+        -:   88:    }
+       96:   89:    x = writerQueue.qu[writerQueue.first];
+      147:   90:    for (h = writerQueue.first; h < writerQueue.last; h++) {
+       51:   91:        writerQueue.qu[h] = writerQueue.qu[h + 1];
+        -:   92:    }
+       96:   93:    writerQueue.last--;
+       96:   94:    pthread_mutex_unlock(queueMutex);
+       96:   95:    return (x);
+        -:   96:}
+        -:   97:// END QUEUE
+        -:   98:
+      101:   99:TMessage readStruct() {
+        -:  100:    TMessage structure;
+      101:  101:    int *type = malloc(1 * sizeof(int));
+      101:  102:    int *size = malloc(1 * sizeof(int));
+        -:  103:
+      101:  104:    read(0, type, sizeof(int));
+      101:  105:    structure.Type = *type;
+        -:  106:
+      101:  107:    read(0, size, sizeof(int));
+      101:  108:    structure.Size = *size;
+      101:  109:    structure.Data = malloc((structure.Size + 1) * sizeof(int));
+        -:  110:
+      101:  111:    int *buf = malloc((structure.Size + 1) * sizeof(int));
+     1801:  112:    for (int i = 0; i < structure.Size; i++) {
+     1700:  113:        read(0, buf, sizeof(int));
+     1700:  114:        structure.Data += i;
+     1700:  115:        *structure.Data = (float) *buf;
+     1700:  116:        structure.Data -= i;
+        -:  117:    }
+        -:  118:
+      101:  119:    return structure;
+        -:  120:}
+        -:  121:
+      135:  122:void makeDiagramm(Metric metric, FILE *fd) {
+     1243:  123:    for (int i = 0; i < metric.Size - 1; i++) {
+    15473:  124:        for (int j = 0; j < metric.Size - i - 1; j++) {
+    14365:  125:            if (metric.Data[j] > metric.Data[j + 1]) {
+     2257:  126:                int tmp = metric.Data[j];
+     2257:  127:                metric.Data[j] = metric.Data[j + 1];
+     2257:  128:                metric.Data[j + 1] = tmp;
+        -:  129:            }
+        -:  130:        }
+        -:  131:    }
+        -:  132:
+     1297:  133:    for (int i = metric.Size - 1; i >= 0; i--) {
+     1162:  134:        float percentel = (100 * (i + 1)) / metric.Size;
+     1162:  135:        fprintf(fd, "[%.0f] = %d мс\n", percentel, metric.Data[i]);
+        -:  136:    }
+      135:  137:    fprintf(fd, "[%.0f] = %d мс\n", 0, 0);
+      135:  138:}
+        -:  139:
+       32:  140:void *bubbleSortThread(TMessage *structure) {
+        -:  141:    struct timespec mt1, mt2;
+       32:  142:    clock_gettime(CLOCK_MONOTONIC, &mt1);
+        -:  143:
+     1600:  144:    for (int i = 0; i < structure->Size - 1; i++) {
+    40768:  145:        for (int j = 0; j < structure->Size - i - 1; j++) {
+    39200:  146:            if (structure->Data[j] > structure->Data[j + 1]) {
+    18381:  147:                int tmp = structure->Data[j];
+    18381:  148:                structure->Data[j] = structure->Data[j + 1];
+    18381:  149:                structure->Data[j + 1] = tmp;
+        -:  150:            }
+        -:  151:        }
+        -:  152:    }
+       32:  153:    insertInQueue(*structure);
+        -:  154:
+       32:  155:    clock_gettime(CLOCK_MONOTONIC, &mt2);
+       64:  156:    int64_t measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+       32:  157:                       ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+       32:  158:    metric_bubble_sort.Data[metric_bubble_sort.Size] = measure;
+       32:  159:    metric_bubble_sort.Size++;
+        -:  160:
+       32:  161:    return 0;
+        -:  162:}
+        -:  163:
+       32:  164:void *powThread(TMessage *structure) {
+        -:  165:    struct timespec mt1, mt2;
+       32:  166:    clock_gettime(CLOCK_MONOTONIC, &mt1);
+        -:  167:
+       32:  168:    float result = powf((float) structure->Data[0], (float) structure->Data[1]);
+       32:  169:    structure->Data[2] = result;
+       32:  170:    insertInQueue(*structure);
+        -:  171:
+       32:  172:    clock_gettime(CLOCK_MONOTONIC, &mt2);
+       64:  173:    int64_t measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+       32:  174:                       ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+       32:  175:    metric_pow.Data[metric_pow.Size] = measure;
+       32:  176:    metric_pow.Size++;
+        -:  177:
+       32:  178:    return 0;
+        -:  179:}
+        -:  180:
+  1825333:  181:int fibonacciCalculator(int n) {
+  1825333:  182:    if (n == 1 || n == 2)
+   878240:  183:        return 1;
+   947093:  184:    return fibonacciCalculator(n - 1) + fibonacciCalculator(n - 2);
+        -:  185:}
+        -:  186:
+       36:  187:void *fibonacciThread(TMessage *structure) {
+        -:  188:    struct timespec mt1, mt2;
+       36:  189:    clock_gettime(CLOCK_MONOTONIC, &mt1);
+        -:  190:
+       36:  191:    if (structure->Data[0] <= 0) {
+    #####:  192:        structure->Data[1] = 0;
+        -:  193:    } else {
+       36:  194:        int result = fibonacciCalculator(structure->Data[0]);
+       36:  195:        structure->Data[1] = result;
+        -:  196:    }
+       36:  197:    insertInQueue(*structure);
+        -:  198:
+       36:  199:    clock_gettime(CLOCK_MONOTONIC, &mt2);
+       72:  200:    int64_t measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+       36:  201:                       ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+        -:  202:
+       36:  203:    metric_fibonacci.Data[metric_fibonacci.Size] = measure;
+       36:  204:    metric_fibonacci.Size++;
+        -:  205:
+       36:  206:    return 0;
+        -:  207:}
+        -:  208:
+        1:  209:void *writer(void *args) {
+        -:  210:    FILE *fd;
+        -:  211:    int64_t measure;
+        1:  212:    fd = fopen("out.txt", "w");
+        1:  213:    if ((int) fd == -1) {
+    #####:  214:        printf("Cannot open file.\n");
+    #####:  215:        exit(1);;
+        -:  216:    }
+        -:  217:
+ 22269425:  218:    while (1) {
+ 22269426:  219:        if (isemptyQueue()) {
+ 22269330:  220:            continue;
+        -:  221:        }
+       96:  222:        TMessage message = removeQueue();
+        -:  223:        struct timespec mt1, mt2;
+       96:  224:        clock_gettime(CLOCK_MONOTONIC, &mt1);
+        -:  225:
+       96:  226:        switch (message.Type) {
+       32:  227:            case FIBONACCI:
+       32:  228:                fprintf(fd, "Fibonacci from %.0f is %.0f\r\n", message.Data[0], message.Data[1]);
+        -:  229:
+       32:  230:                clock_gettime(CLOCK_MONOTONIC, &mt2);
+       64:  231:                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+       32:  232:                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+       32:  233:                metric_writer_fibonacci.Data[metric_writer_fibonacci.Size] = measure;
+       32:  234:                metric_writer_fibonacci.Size++;
+       32:  235:                break;
+       31:  236:            case POW:
+       31:  237:                fprintf(fd, "%.0f^%.0f=%.0f\r\n", message.Data[0], message.Data[1], message.Data[2]);
+        -:  238:
+       31:  239:                clock_gettime(CLOCK_MONOTONIC, &mt2);
+       62:  240:                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+       31:  241:                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+       31:  242:                metric_writer_pow.Data[metric_writer_pow.Size] = measure;
+       31:  243:                metric_writer_pow.Size++;
+       31:  244:                break;
+       32:  245:            case BUBBLE_SORT_UINT64:
+       32:  246:                fprintf(fd, "bubble sorted array size is %d\r\n", message.Size);
+     1632:  247:                for (int i = 0; i < message.Size; i++) {
+     1600:  248:                    fprintf(fd, "e[%d]: %.0f\r\n", i, message.Data[i]);
+        -:  249:                }
+        -:  250:
+       32:  251:                clock_gettime(CLOCK_MONOTONIC, &mt2);
+       64:  252:                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+       32:  253:                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+       32:  254:                metric_writer_bubble_sort.Data[metric_writer_bubble_sort.Size] = measure;
+       32:  255:                metric_writer_bubble_sort.Size++;
+       32:  256:                break;
+        1:  257:            case STOP:
+        1:  258:                fclose(fd);
+        2:  259:                return 0;
+        -:  260:        }
+       95:  261:        fprintf(fd, "\n");
+        -:  262:    }
+        -:  263:}
+        -:  264:
+       15:  265:void printMetric() {
+        -:  266:    FILE *fd;
+       15:  267:    fd = fopen("metric.txt", "w");
+       15:  268:    if ((int) fd == -1) {
+    #####:  269:        printf("Cannot open file.\n");
+    #####:  270:        exit(1);;
+        -:  271:    }
+        -:  272:
+       15:  273:    fprintf(fd, "Выполнение фибоначчи:\n");
+       15:  274:    makeDiagramm(metric_fibonacci, fd);
+       15:  275:    fprintf(fd, "\n");
+       15:  276:    fprintf(fd, "Выполнение Вычисления в степернь:\n");
+       15:  277:    makeDiagramm(metric_pow, fd);
+       15:  278:    fprintf(fd, "\n");
+       15:  279:    fprintf(fd, "Выполнение пузырьковой сортиковки:\n");
+       15:  280:    makeDiagramm(metric_bubble_sort, fd);
+       15:  281:    fprintf(fd, "\n");
+       15:  282:    fprintf(fd, "Чтение структуры для фибоначчи:\n");
+       15:  283:    makeDiagramm(metric_reader_fibonacci, fd);
+       15:  284:    fprintf(fd, "\n");
+       15:  285:    fprintf(fd, "Чтение структуры для вычисления в степернь:\n");
+       15:  286:    makeDiagramm(metric_reader_pow, fd);
+       15:  287:    fprintf(fd, "\n");
+       15:  288:    fprintf(fd, "Чтение структуры для пузырьковой сортиковки:\n");
+       15:  289:    makeDiagramm(metric_reader_bubble_sort, fd);
+       15:  290:    fprintf(fd, "\n");
+       15:  291:    fprintf(fd, "Запись структуры для фибоначчи:\n");
+       15:  292:    makeDiagramm(metric_writer_fibonacci, fd);
+       15:  293:    fprintf(fd, "\n");
+       15:  294:    fprintf(fd, "Запись структуры для вычисления в степернь:\n");
+       15:  295:    makeDiagramm(metric_writer_pow, fd);
+       15:  296:    fprintf(fd, "\n");
+       15:  297:    fprintf(fd, "Запись структуры для пузырьковой сортиковки:\n");
+       15:  298:    makeDiagramm(metric_writer_bubble_sort, fd);
+        -:  299:
+       15:  300:    fclose(fd);
+       15:  301:}
+        -:  302:
+       14:  303:void *metricMethod(void *args) {
+        -:  304:    do {
+       14:  305:        printMetric();
+       14:  306:        usleep(mkSeconds);
+       14:  307:    } while (wasStopped == 0);
+        1:  308:    printMetric();
+        -:  309:
+        1:  310:    return 0;
+        -:  311:}
+        -:  312:
+        1:  313:void *reader(void *args) {
+        1:  314:    int threadsMaxCount = 100;
+        1:  315:    pthread_t *threads = malloc((threadsMaxCount) * sizeof(pthread_t));
+        1:  316:    TMessage *structures = malloc((threadsMaxCount) * sizeof(TMessage));
+        1:  317:    int threadsCount = 0;
+        1:  318:    int status = 0;
+        1:  319:    int flag = 0;
+        -:  320:    int64_t measure;
+        -:  321:
+      103:  322:    while (flag == 0) {
+      101:  323:        if (threadsCount >= threadsMaxCount) {
+        1:  324:            threadsMaxCount += 200;
+        1:  325:            if ((threads = (pthread_t *) realloc(threads, sizeof(pthread_t) * threadsMaxCount)) == NULL) {
+    #####:  326:                printf("realloc error");
+    #####:  327:                exit(1);
+        -:  328:            }
+        1:  329:            if ((structures = (TMessage *) realloc(structures, sizeof(TMessage) * threadsMaxCount)) == NULL) {
+    #####:  330:                perror("realloc error");
+    #####:  331:                exit(1);
+        -:  332:            }
+        -:  333:        }
+        -:  334:
+      101:  335:        structures[threadsCount] = readStruct();
+        -:  336:        struct timespec mt1, mt2;
+      101:  337:        clock_gettime(CLOCK_MONOTONIC, &mt1);
+        -:  338:
+      101:  339:        switch (structures[threadsCount].Type) {
+       36:  340:            case FIBONACCI:
+       36:  341:                pthread_create(&threads[threadsCount], NULL, fibonacciThread, &structures[threadsCount]);
+       36:  342:                threadsCount++;
+        -:  343:
+       36:  344:                clock_gettime(CLOCK_MONOTONIC, &mt2);
+       72:  345:                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+       36:  346:                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+       36:  347:                metric_reader_fibonacci.Data[metric_reader_fibonacci.Size] = measure;
+       36:  348:                metric_reader_fibonacci.Size++;
+       36:  349:                break;
+       32:  350:            case POW:
+       32:  351:                status = pthread_create(&threads[threadsCount], NULL, powThread, (void *) &structures[threadsCount]);
+       32:  352:                if (status != 0) {
+    #####:  353:                    printf("pow create error: %d\n", status);
+        -:  354:                }
+       32:  355:                threadsCount++;
+        -:  356:
+       32:  357:                clock_gettime(CLOCK_MONOTONIC, &mt2);
+       64:  358:                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+       32:  359:                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+       32:  360:                metric_reader_pow.Data[metric_reader_pow.Size] = measure;
+       32:  361:                metric_reader_pow.Size++;
+       32:  362:                break;
+       32:  363:            case BUBBLE_SORT_UINT64:
+       32:  364:                pthread_create(&threads[threadsCount], NULL, bubbleSortThread, (void *) &structures[threadsCount]);
+       32:  365:                threadsCount++;
+        -:  366:
+       32:  367:                clock_gettime(CLOCK_MONOTONIC, &mt2);
+       64:  368:                measure = (((mt2.tv_sec * 1000000000L) + mt2.tv_nsec) -
+       32:  369:                           ((mt1.tv_sec * 1000000000L) + mt1.tv_nsec)) / 1000L;
+       32:  370:                metric_reader_bubble_sort.Data[metric_reader_bubble_sort.Size] = measure;
+       32:  371:                metric_reader_bubble_sort.Size++;
+       32:  372:                break;
+        1:  373:            case STOP:
+        1:  374:                insertInQueue(structures[threadsCount]);
+        1:  375:                flag = 1;
+        1:  376:                break;
+        -:  377:        }
+        -:  378:    }
+        -:  379:
+      101:  380:    for (int i = 0; i < threadsCount; i++) {
+      100:  381:        status = pthread_join(threads[i], NULL);
+      100:  382:        if (status != 0) {
+    #####:  383:            printf("join error on [%d] thread: %d\n", i, status);
+        -:  384:        }
+        -:  385:    }
+        -:  386:
+        1:  387:    return 0;
+        -:  388:}
+        -:  389:
+        1:  390:void initMetrics() {
+        1:  391:    metric_reader_fibonacci.Size = 0;
+        1:  392:    metric_reader_pow.Size = 0;
+        1:  393:    metric_reader_bubble_sort.Size = 0;
+        1:  394:    metric_reader_stop.Size = 0;
+        1:  395:    metric_writer_fibonacci.Size = 0;
+        1:  396:    metric_writer_pow.Size = 0;
+        1:  397:    metric_writer_bubble_sort.Size = 0;
+        1:  398:    metric_writer_stop.Size = 0;
+        1:  399:    metric_fibonacci.Size = 0;
+        1:  400:    metric_pow.Size = 0;
+        1:  401:    metric_bubble_sort.Size = 0;
+        1:  402:    metric_stop.Size = 0;
+        -:  403:
+        1:  404:    metric_reader_fibonacci.Data = malloc((10000) * sizeof(int));
+        1:  405:    metric_reader_pow.Data = malloc((10000) * sizeof(int));
+        1:  406:    metric_reader_bubble_sort.Data = malloc((10000) * sizeof(int));
+        1:  407:    metric_reader_stop.Data = malloc((10000) * sizeof(int));
+        1:  408:    metric_writer_fibonacci.Data = malloc((10000) * sizeof(int));
+        1:  409:    metric_writer_pow.Data = malloc((10000) * sizeof(int));
+        1:  410:    metric_writer_bubble_sort.Data = malloc((10000) * sizeof(int));
+        1:  411:    metric_writer_stop.Data = malloc((10000) * sizeof(int));
+        1:  412:    metric_fibonacci.Data = malloc((10000) * sizeof(int));
+        1:  413:    metric_pow.Data = malloc((10000) * sizeof(int));
+        1:  414:    metric_bubble_sort.Data = malloc((10000) * sizeof(int));
+        1:  415:    metric_stop.Data = malloc((10000) * sizeof(int));
+        1:  416:}
+        -:  417:
+        -:  418:
+        -:  419:
+        -:  420:
+        -:  421:
+        -:  422:
+        -:  423:
+        -:  424:
+        -:  425:
+        -:  426:
+    #####:  427:void fibonacciTest(){
+    #####:  428:    int result = fibonacciCalculator(13);
+    #####:  429:    assert(result = 233);
+    #####:  430:}
+        -:  431:
+    #####:  432:void tests() {
+    #####:  433:    fibonacciTest();
+    #####:  434:}
+        -:  435:
+        -:  436:
+        -:  437:
+        -:  438:
+        -:  439:
+        -:  440:
+        -:  441:
+        -:  442:
+        -:  443:
+        -:  444:
+        1:  445:int main(int argc, char **argv) {
+        1:  446:    initMetrics();
+        -:  447:
+        -:  448:// read params
+        1:  449:    if (argc != 5) {
+    #####:  450:        printf("please, define \"strategy\" and \"t\".\n");
+    #####:  451:        exit(1);
+        -:  452:    }
+        -:  453:
+        4:  454:    for (int i = 1; i < argc - 1; i++) {
+        3:  455:        if (strcmp(argv[i], "-t") == 0) {
+        1:  456:            sscanf(argv[i + 1], "%d", &mkSeconds);
+        1:  457:            if (mkSeconds <= 0) {
+    #####:  458:                printf("timeout can't be less. than 1");
+    #####:  459:                exit(1);
+        -:  460:            }
+        -:  461:        }
+        -:  462:
+        3:  463:        if (strcmp(argv[i], "–strategy") == 0) {
+        1:  464:            strategy = argv[i + 1];
+        -:  465:        }
+        -:  466:    }
+        -:  467:
+        1:  468:    if (strcmp(strategy, "per_thread") != 0) {
+    #####:  469:        printf("please, use per_thread as value for -strategy.\n");
+    #####:  470:        exit(1);
+        -:  471:    }
+        -:  472:
+        1:  473:    if (mkSeconds == 0) {
+    #####:  474:        printf("please, define \"strategy\" and \"t\".\n");
+    #####:  475:        exit(1);
+        -:  476:    }
+        -:  477://end read params
+        -:  478:
+        1:  479:    int status = 0;
+        -:  480:    pthread_t readerThread;
+        -:  481:    pthread_t writerThread;
+        -:  482:    pthread_t metricThread;
+        -:  483:
+        1:  484:    initQueue();
+        -:  485:
+        1:  486:    status = pthread_create(&metricThread, NULL, metricMethod, NULL);
+        1:  487:    if (status != 0) {
+    #####:  488:        printf("main error: can't create metric thread, status = %d\n", status);
+        -:  489:    }
+        -:  490:
+        1:  491:    status = pthread_create(&readerThread, NULL, reader, NULL);
+        1:  492:    if (status != 0) {
+    #####:  493:        printf("main error: can't create reader thread, status = %d\n", status);
+        -:  494:    }
+        -:  495:
+        1:  496:    status = pthread_create(&writerThread, NULL, writer, NULL);
+        1:  497:    if (status != 0) {
+    #####:  498:        printf("main error: can't create writer thread, status = %d\n", status);
+        -:  499:    }
+        -:  500:
+        1:  501:    status = pthread_join(readerThread, NULL);
+        1:  502:    if (status != 0) {
+    #####:  503:        printf("main error: can't join reader thread, status = %d\n", status);
+        -:  504:    }
+        -:  505:
+        1:  506:    status = pthread_join(writerThread, NULL);
+        1:  507:    if (status != 0) {
+    #####:  508:        printf("main error: can't join writer thread, status = %d\n", status);
+        -:  509:    }
+        -:  510:
+        1:  511:    wasStopped = 1;
+        -:  512:
+        1:  513:    status = pthread_join(metricThread, NULL);
+        1:  514:    if (status != 0) {
+    #####:  515:        printf("main error: can't join metric thread, status = %d\n", status);
+        -:  516:    }
+        -:  517:
+        -:  518:////    tests();
+        1:  519:    return 0;
+        -:  520:}
+        -:  521:
+        -:  522:

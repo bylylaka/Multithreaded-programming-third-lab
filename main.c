@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <math.h>
 #include <string.h>
+#include <assert.h>
 
 pthread_mutex_t queueMutex = PTHREAD_MUTEX_INITIALIZER;
 int wasStopped = 0;
@@ -400,18 +401,18 @@ void initMetrics() {
     metric_bubble_sort.Size = 0;
     metric_stop.Size = 0;
 
-    metric_reader_fibonacci.Data = malloc((10000) * sizeof(int)); //TODO: realloc
-    metric_reader_pow.Data = malloc((10000) * sizeof(int)); //TODO: realloc
-    metric_reader_bubble_sort.Data = malloc((10000) * sizeof(int)); //TODO: realloc
-    metric_reader_stop.Data = malloc((10000) * sizeof(int)); //TODO: realloc
-    metric_writer_fibonacci.Data = malloc((10000) * sizeof(int)); //TODO: realloc
-    metric_writer_pow.Data = malloc((10000) * sizeof(int)); //TODO: realloc
-    metric_writer_bubble_sort.Data = malloc((10000) * sizeof(int)); //TODO: realloc
-    metric_writer_stop.Data = malloc((10000) * sizeof(int)); //TODO: realloc
-    metric_fibonacci.Data = malloc((10000) * sizeof(int)); //TODO: realloc
-    metric_pow.Data = malloc((10000) * sizeof(int)); //TODO: realloc
-    metric_bubble_sort.Data = malloc((10000) * sizeof(int)); //TODO: realloc
-    metric_stop.Data = malloc((10000) * sizeof(int)); //TODO: realloc
+    metric_reader_fibonacci.Data = malloc((10000) * sizeof(int));
+    metric_reader_pow.Data = malloc((10000) * sizeof(int));
+    metric_reader_bubble_sort.Data = malloc((10000) * sizeof(int));
+    metric_reader_stop.Data = malloc((10000) * sizeof(int));
+    metric_writer_fibonacci.Data = malloc((10000) * sizeof(int));
+    metric_writer_pow.Data = malloc((10000) * sizeof(int));
+    metric_writer_bubble_sort.Data = malloc((10000) * sizeof(int));
+    metric_writer_stop.Data = malloc((10000) * sizeof(int));
+    metric_fibonacci.Data = malloc((10000) * sizeof(int));
+    metric_pow.Data = malloc((10000) * sizeof(int));
+    metric_bubble_sort.Data = malloc((10000) * sizeof(int));
+    metric_stop.Data = malloc((10000) * sizeof(int));
 }
 
 int main(int argc, char **argv) {
@@ -486,5 +487,8 @@ int main(int argc, char **argv) {
     if (status != 0) {
         printf("main error: can't join metric thread, status = %d\n", status);
     }
+
     return 0;
 }
+
+
